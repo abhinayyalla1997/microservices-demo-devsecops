@@ -1,0 +1,80 @@
+name: CI
+
+# Started with a single service (frontend) to validate the pipeline end to
+# end before wiring the full 12-way matrix, per CLAUDE.md's incremental
+# validation rule. Add the remaining service names to `matrix.service` below
+# once this one is confirmed working.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+    paths:
+      - "src/frontend/**"
+      - ".github/workflows/ci.yml"
+      - ".github/actions/build-scan-sign/**"
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  build-scan-sign:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [frontend]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve per-service Dockerfile path and image tag
+        id: resolve
+        shell: bash
+        run: |
+          # cartservice is the one exception (nested .NET solution layout);
+          # every other service is a flat src/<service>/Dockerfile.
+          case "${{ matrix.service }}" in
+            cartservice)
+              DOCKERFILE="src/cartservice/src/Dockerfile"
+              ;;
+            *)
+              DOCKERFILE="src/${{ matrix.service }}/Dockerfile"
+              ;;
+          esac
+          CONTEXT="$(dirname "$DOCKERFILE")"
+          REPO_LC=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_TAG="ghcr.io/${REPO_LC}/${{ matrix.service }}:pr-${{ github.event.pull_request.number }}-${{ github.sha }}"
+          echo "dockerfile=$DOCKERFILE" >> "$GITHUB_OUTPUT"
+          echo "context=$CONTEXT" >> "$GITHUB_OUTPUT"
+          echo "image-tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Build, scan, and sign
+        uses: ./.github/actions/build-scan-sign
+        with:
+          context: ${{ steps.resolve.outputs.context }}
+          dockerfile: ${{ steps.resolve.outputs.dockerfile }}
+          image-tag: ${{ steps.resolve.outputs.image-tag }}
+
+  cleanup-ghcr:
+    # Deletes this PR's throwaway GHCR image(s) so they don't accumulate.
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      matrix:
+        service: [frontend]
+    steps:
+      - name: Delete PR-time package version
+        uses: actions/delete-package-versions@v5
+        with:
+          owner: ${{ github.repository_owner }}
+          package-name: ${{ github.event.repository.name }}/${{ matrix.service }}
+          package-type: container
+          # Only remove versions tagged for this PR, never the whole package.
+          min-versions-to-keep: 0
+          ignore-versions: "^(?!pr-${{ github.event.pull_request.number }}-).*$"

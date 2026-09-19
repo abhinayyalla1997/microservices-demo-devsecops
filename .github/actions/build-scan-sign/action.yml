@@ -1,0 +1,58 @@
+name: Build, scan, and sign a service image
+description: >
+  Builds one microservice's Docker image, pushes an ephemeral PR-time tag to
+  GHCR, scans it with Trivy, and signs it with keyless Cosign (GitHub OIDC).
+  CI-only: this never touches Amazon ECR — that happens in the CD workflow.
+
+inputs:
+  context:
+    description: Docker build context directory (the directory containing the Dockerfile)
+    required: true
+  dockerfile:
+    description: Path to the service's Dockerfile
+    required: true
+  image-tag:
+    description: Full image ref to build, push, scan, and sign (e.g. ghcr.io/OWNER/REPO/SERVICE:pr-123-abcdef)
+    required: true
+
+outputs:
+  digest:
+    description: Digest of the pushed image
+    value: ${{ steps.build.outputs.digest }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
+    - name: Build and push
+      id: build
+      uses: docker/build-push-action@v6
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.dockerfile }}
+        push: true
+        tags: ${{ inputs.image-tag }}
+
+    - name: Trivy image scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ inputs.image-tag }}
+        severity: HIGH,CRITICAL
+        exit-code: "1"
+        ignore-unfixed: true
+
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@v3
+
+    - name: Sign image (keyless)
+      shell: bash
+      run: cosign sign --yes "${{ inputs.image-tag }}@${{ steps.build.outputs.digest }}"
