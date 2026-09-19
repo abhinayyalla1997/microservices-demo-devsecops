@@ -1,0 +1,73 @@
+name: CD
+
+# Frontend-only for now (this session's scope). Do NOT add the other 11
+# services to this workflow yet — expand once frontend is confirmed working
+# end-to-end in the cluster, per CLAUDE.md.
+#
+# Unlike ci.yml, this workflow pushes real images to Amazon ECR and stops
+# there. It never touches the GitOps repo or the cluster: Argo CD Image
+# Updater (in-cluster) watches ECR for new frontend-* tags and updates the
+# GitOps repo itself, using Argo CD's own Git credentials — see CLAUDE.md's
+# "GitOps repo update mechanism" decision.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/frontend/**"
+      - ".github/workflows/cd.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: online-boutique
+  # Trust policy on this role restricts AssumeRoleWithWebIdentity to
+  # repo:abhinayyalla1997/microservices-demo-devsecops:ref:refs/heads/main
+  # only — no PR/branch workflow can ever assume it.
+  AWS_ROLE_ARN: arn:aws:iam::566279697030:role/github-actions-cd-frontend
+
+jobs:
+  build-scan-sign-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push frontend image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: src/frontend
+          file: src/frontend/Dockerfile
+          push: true
+          tags: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:frontend-${{ github.sha }}
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:frontend-${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image (keyless)
+        run: cosign sign --yes "${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}@${{ steps.build.outputs.digest }}"
