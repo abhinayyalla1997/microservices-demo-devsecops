@@ -13,6 +13,8 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/cd.yml"
+      - ".trivyignore"
+  workflow_dispatch: {}
 
 permissions:
   contents: read
