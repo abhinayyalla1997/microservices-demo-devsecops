@@ -89,10 +89,11 @@ protobuf==6.33.5
     #   grpcio-status
     #   opentelemetry-proto
     #   proto-plus
-pyasn1==0.5.0
+pyasn1==0.6.4
     # via
     #   pyasn1-modules
     #   rsa
+    # bumped from 0.5.0 for CVE-2026-30922/59884/59885/59886
 pyasn1-modules==0.3.0
     # via google-auth
 python-json-logger==4.0.0
@@ -110,8 +111,13 @@ typing-extensions==4.15.0
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
-urllib3==2.6.3
+urllib3==2.7.0
     # via requests
+    # bumped from 2.6.3 for CVE-2026-44431/44432
+msgpack==1.2.1
+    # not in requirements.in — transitive; pinned explicitly for GHSA-6v7p-g79w-8964
+setuptools==78.1.1
+    # not in requirements.in — transitive; pinned explicitly for CVE-2025-47273
 wrapt==1.16.0
     # via
     #   opentelemetry-instrumentation

@@ -49,6 +49,13 @@ dependencies {
     }
 }
 
+// Force a patched netty-handler (CVE-2026-75595) pulled in transitively via grpc-netty
+configurations.all {
+    resolutionStrategy {
+        force "io.netty:netty-handler:4.2.17.Final"
+    }
+}
+
 protobuf {
     protoc {
         artifact = "com.google.protobuf:protoc:${protocVersion}"

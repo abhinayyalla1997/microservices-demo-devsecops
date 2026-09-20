@@ -52,8 +52,9 @@ markupsafe==3.0.2
     #   flask
     #   jinja2
     #   werkzeug
-msgpack==1.1.1
+msgpack==1.2.1
     # via locust
+    # bumped from 1.1.1 for GHSA-6v7p-g79w-8964
 packaging==25.0
     # via pytest
 pluggy==1.6.0
@@ -64,12 +65,14 @@ pygments==2.19.2
     # via pytest
 pytest==8.4.2
     # via locust
-python-engineio==4.12.2
+python-engineio==4.13.2
     # via
     #   locust
     #   python-socketio
-python-socketio[client]==5.13.0
+    # bumped from 4.12.2 for CVE-2026-48802/48809
+python-socketio[client]==5.16.2
     # via locust
+    # bumped from 5.13.0 for CVE-2026-48804
 pyzmq==27.1.0
     # via locust
 requests==2.32.5
@@ -80,10 +83,13 @@ simple-websocket==1.1.0
     # via python-engineio
 tzdata==2025.2
     # via faker
-urllib3==2.6.3
+urllib3==2.7.0
     # via
     #   geventhttpclient
     #   requests
+    # bumped from 2.6.3 for CVE-2026-44431/44432
+setuptools==78.1.1
+    # not in requirements.in — transitive; pinned explicitly for CVE-2025-47273
 websocket-client==1.8.0
     # via python-socketio
 werkzeug==3.1.6

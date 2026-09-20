@@ -33,7 +33,11 @@ RUN dotnet publish cartservice.csproj \
     -o /cartservice
 
 # https://mcr.microsoft.com/product/dotnet/runtime-deps
-FROM mcr.microsoft.com/dotnet/runtime-deps:10.0.0-noble-chiseled@sha256:b857c8cb8d929183cfe4c6dd9994abba92a2639dd2dbaf06005379f815991604
+# Not pinned by digest (unlike the builder stage above): this is a "chiseled"
+# distroless-style image with no package manager, so an OS CVE fix (e.g.
+# CVE-2026-45447 in libssl3t64) can only be picked up by tracking the tag to
+# whatever digest Microsoft has currently published for it.
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0.0-noble-chiseled
 
 WORKDIR /app
 COPY --from=builder /cartservice .

@@ -31,6 +31,11 @@ FROM base
 # Enable unbuffered logging
 ENV PYTHONUNBUFFERED=1
 
+# Pull current patched OS packages (gzip/pcre2/sqlite3/perl CVEs)
+RUN apt-get -qq update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
+
 # get packages
 WORKDIR /shoppingassistantservice
 

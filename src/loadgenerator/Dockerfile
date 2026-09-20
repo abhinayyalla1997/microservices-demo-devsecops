@@ -36,6 +36,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 RUN apk update \
+    && apk upgrade --no-cache \
     && apk add --no-cache libstdc++ \
     && rm -rf /var/cache/apk/*
 
