@@ -1,12 +1,9 @@
 name: CD
 
-# Frontend-only for now (this session's scope). Do NOT add the other 11
-# services to this workflow yet — expand once frontend is confirmed working
-# end-to-end in the cluster, per CLAUDE.md.
-#
-# Unlike ci.yml, this workflow pushes real images to Amazon ECR and stops
-# there. It never touches the GitOps repo or the cluster: Argo CD Image
-# Updater (in-cluster) watches ECR for new frontend-* tags and updates the
+# Builds, scans, signs, and pushes all 12 services to Amazon ECR on every
+# push to main. Unlike ci.yml, this pushes real images and stops there — it
+# never touches the GitOps repo or the cluster: Argo CD Image Updater
+# (in-cluster) watches ECR for new <service>-<sha> tags and updates the
 # GitOps repo itself, using Argo CD's own Git credentials — see CLAUDE.md's
 # "GitOps repo update mechanism" decision.
 
@@ -14,7 +11,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "src/frontend/**"
+      - "src/**"
       - ".github/workflows/cd.yml"
 
 permissions:
@@ -25,16 +22,50 @@ env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: online-boutique
   # Trust policy on this role restricts AssumeRoleWithWebIdentity to
-  # repo:abhinayyalla1997/microservices-demo-devsecops:ref:refs/heads/main
-  # only — no PR/branch workflow can ever assume it.
+  # repo:abhinayyalla1997@127104532/microservices-demo-devsecops@1375690658:ref:refs/heads/main
+  # only — no PR/branch workflow can ever assume it. IAM policy is scoped
+  # at the repository level (arn:...:repository/online-boutique), so this
+  # one role can push any service's tag — no per-service roles needed.
   AWS_ROLE_ARN: arn:aws:iam::566279697030:role/github-actions-cd-frontend
 
 jobs:
   build-scan-sign-push:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - adservice
+          - cartservice
+          - checkoutservice
+          - currencyservice
+          - emailservice
+          - frontend
+          - loadgenerator
+          - paymentservice
+          - productcatalogservice
+          - recommendationservice
+          - shippingservice
+          - shoppingassistantservice
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Resolve per-service Dockerfile path and image tag
+        id: resolve
+        shell: bash
+        run: |
+          case "${{ matrix.service }}" in
+            cartservice)
+              DOCKERFILE="src/cartservice/src/Dockerfile"
+              ;;
+            *)
+              DOCKERFILE="src/${{ matrix.service }}/Dockerfile"
+              ;;
+          esac
+          CONTEXT="$(dirname "$DOCKERFILE")"
+          echo "dockerfile=$DOCKERFILE" >> "$GITHUB_OUTPUT"
+          echo "context=$CONTEXT" >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -49,19 +80,19 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push frontend image
+      - name: Build and push image
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: src/frontend
-          file: src/frontend/Dockerfile
+          context: ${{ steps.resolve.outputs.context }}
+          file: ${{ steps.resolve.outputs.dockerfile }}
           push: true
-          tags: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:frontend-${{ github.sha }}
+          tags: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ matrix.service }}-${{ github.sha }}
 
       - name: Trivy image scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:frontend-${{ github.sha }}
+          image-ref: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ matrix.service }}-${{ github.sha }}
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true

@@ -1,16 +1,11 @@
 name: CI
 
-# Started with a single service (frontend) to validate the pipeline end to
-# end before wiring the full 12-way matrix, per CLAUDE.md's incremental
-# validation rule. Add the remaining service names to `matrix.service` below
-# once this one is confirmed working.
-
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches: [main]
     paths:
-      - "src/frontend/**"
+      - "src/**"
       - ".github/workflows/ci.yml"
       - ".github/actions/build-scan-sign/**"
 
@@ -26,7 +21,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [frontend]
+        service:
+          - adservice
+          - cartservice
+          - checkoutservice
+          - currencyservice
+          - emailservice
+          - frontend
+          - loadgenerator
+          - paymentservice
+          - productcatalogservice
+          - recommendationservice
+          - shippingservice
+          - shoppingassistantservice
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,8 +73,21 @@ jobs:
     permissions:
       packages: write
     strategy:
+      fail-fast: false
       matrix:
-        service: [frontend]
+        service:
+          - adservice
+          - cartservice
+          - checkoutservice
+          - currencyservice
+          - emailservice
+          - frontend
+          - loadgenerator
+          - paymentservice
+          - productcatalogservice
+          - recommendationservice
+          - shippingservice
+          - shoppingassistantservice
     steps:
       - name: Delete PR-time package version
         uses: actions/delete-package-versions@v5
