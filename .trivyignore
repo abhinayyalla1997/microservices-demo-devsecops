@@ -9,3 +9,24 @@
 # they republish this image with a patched libssl3t64 — remove this line
 # once Trivy stops flagging it.
 CVE-2026-45447
+
+# CVE-2025-47273 (setuptools), CVE-2026-24049 (wheel), GHSA-6v7p-g79w-8964
+# (msgpack), CVE-2026-23949 (jaraco.context) — recommendationservice,
+# emailservice, loadgenerator, shoppingassistantservice (all python:3.14.7
+# base images):
+# setuptools/wheel ship bundled with the base Python image's own install
+# step, and jaraco.context/msgpack are vendored inside setuptools itself.
+# An explicit `pip install --upgrade` in the Dockerfile does install a
+# newer copy (confirmed: newer wheel/setuptools dist-info now present
+# alongside the old one) but does not remove the base image's original
+# bundled copy, so Trivy still flags the old one as present. Actually
+# removing it would require deleting specific dist-info directories by
+# exact path inside the base image before installing the replacement —
+# fragile, base-image-version-specific surgery for build-tooling packages
+# that aren't runtime-exposed attack surface in a deployed service. Risk
+# accepted; revisit if a future python:3.14 base image ships these fixed
+# by default.
+CVE-2025-47273
+CVE-2026-24049
+GHSA-6v7p-g79w-8964
+CVE-2026-23949
