@@ -28,7 +28,12 @@ RUN apk update \
 
 COPY requirements.txt .
 
-RUN pip install --prefix="/install" -r requirements.txt
+# setuptools/wheel ship bundled with the base Python image itself, so a
+# plain requirements.txt pin doesn't reliably upgrade them (CVE-2025-47273,
+# CVE-2026-24049) — upgrade explicitly first, into the same --prefix so the
+# fix actually lands in what gets copied to the final stage.
+RUN pip install --prefix="/install" --upgrade --no-cache-dir "setuptools>=78.1.1" "wheel>=0.46.2" \
+    && pip install --prefix="/install" -r requirements.txt
 
 FROM base
 

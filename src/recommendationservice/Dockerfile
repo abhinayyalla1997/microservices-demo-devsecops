@@ -28,7 +28,11 @@ RUN apk update \
 
 # get packages
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+# setuptools/wheel ship bundled with the base Python image itself, so a
+# plain requirements.txt pin doesn't reliably upgrade them (CVE-2025-47273,
+# CVE-2026-24049) — upgrade explicitly first.
+RUN pip install --upgrade --no-cache-dir "setuptools>=78.1.1" "wheel>=0.46.2" \
+    && pip install -r requirements.txt
 
 FROM base
 

@@ -73,8 +73,9 @@ pyasn1==0.6.4
     #   pyasn1-modules
     #   rsa
     # bumped from 0.5.0 for CVE-2026-30922/59884/59885/59886
-pyasn1-modules==0.3.0
+pyasn1-modules==0.4.2
     # via google-auth
+    # bumped from 0.3.0 — required for compatibility with pyasn1>=0.6 (0.3.0 caps pyasn1<0.6.0)
 python-json-logger==4.0.0
     # via -r requirements.in
 requests==2.32.5

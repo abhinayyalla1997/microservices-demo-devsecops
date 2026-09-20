@@ -1,0 +1,11 @@
+# Risk-accepted findings only — every entry here must have a reason.
+#
+# CVE-2026-45447 (libssl3t64, cartservice's final stage):
+# cartservice's final stage is a "chiseled" distroless-style Ubuntu image
+# (mcr.microsoft.com/dotnet/runtime-deps:10.0.0-noble-chiseled) with no
+# package manager, so this OS-level CVE can't be patched with apt. The
+# FROM line already tracks the tag without a digest pin (see that
+# Dockerfile) so it picks up Microsoft's fix automatically the next time
+# they republish this image with a patched libssl3t64 — remove this line
+# once Trivy stops flagging it.
+CVE-2026-45447
